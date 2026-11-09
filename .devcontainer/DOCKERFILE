@@ -1,0 +1,39 @@
+FROM ghcr.io/coder/code-server:4.145.2@sha256:09565f9e07f5624554e295e8bab0e2fec4a7c533eb3cff459ed6596a4d3d7c1c
+
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    opam build-essential m4 pkg-config libgmp-dev bubblewrap unzip ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /opt/opam /opt/waterproof-extensions /home/coder/workspace \
+    && chown -R coder:coder /opt/opam /opt/waterproof-extensions /home/coder/workspace
+
+USER coder
+ENV OPAMROOT=/opt/opam OPAMSWITCH=waterproof OPAMYES=1
+# Limit parallel compilation to avoid exhausting Docker Desktop's memory.
+ARG OPAMJOBS=1
+RUN opam init --bare --disable-sandboxing --no-setup -y \
+    && opam switch create waterproof ocaml-base-compiler.4.14.2 -y --jobs=${OPAMJOBS} \
+    && opam install -y --jobs=${OPAMJOBS} \
+       coq-lsp.0.2.5+9.1 rocq-waterproof.3.1.1+9.1 \
+    && opam exec -- coq-lsp --version \
+    && opam list --installed > /opt/opam/installed-packages.txt \
+    && opam clean -a -c -s --logs -y
+
+# Install a verified, universal VSIX from Open VSX, not Microsoft's marketplace.
+RUN curl -fsSL --retry 3 \
+      https://open-vsx.org/api/waterproof-tue/waterproof/0.12.4/file/waterproof-tue.waterproof-0.12.4.vsix \
+      -o /tmp/waterproof.vsix \
+    && echo 'ff7fd86a14094fec6a44b583416ff4ba78112f6a7fa564faffa3eb869e7a8e6e  /tmp/waterproof.vsix' | sha256sum -c - \
+    && code-server --extensions-dir /opt/waterproof-extensions \
+       --install-extension /tmp/waterproof.vsix \
+    && code-server --extensions-dir /opt/waterproof-extensions --list-extensions --show-versions \
+       | grep -Fx 'waterproof-tue.waterproof@0.12.4' \
+    && rm /tmp/waterproof.vsix
+
+# Also make the tools available to docker exec and integrated terminals.
+ENV PATH="/opt/opam/waterproof/bin:${PATH}"
+WORKDIR /home/coder/workspace
+EXPOSE 8080
+# opam exec supplies the complete environment to the server and extension host.
+ENTRYPOINT ["/usr/bin/dumb-init", "--", "opam", "exec", "--", "code-server"]
+CMD ["--bind-addr", "0.0.0.0:8080", "--auth", "password", "--disable-telemetry", "--extensions-dir", "/opt/waterproof-extensions", "/home/coder/workspace"]

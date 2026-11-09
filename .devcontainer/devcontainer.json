@@ -1,0 +1,6 @@
+{
+    "name": "Waterproof",
+    "build": {
+        "dockerfile": "Dockerfile"
+    }
+}
