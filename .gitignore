@@ -1,0 +1,5 @@
+*.mv
+.DS_Store
+*.cache
+core
+*.pdf
