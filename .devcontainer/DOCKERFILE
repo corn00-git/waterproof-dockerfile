@@ -9,11 +9,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 USER coder
 ENV OPAMROOT=/opt/opam OPAMSWITCH=waterproof OPAMYES=1
-# Limit parallel compilation to avoid exhausting Docker Desktop's memory.
-ARG OPAMJOBS=1
 RUN opam init --bare --disable-sandboxing --no-setup -y \
-    && opam switch create waterproof ocaml-base-compiler.4.14.2 -y --jobs=${OPAMJOBS} \
-    && opam install -y --jobs=${OPAMJOBS} \
+    && opam switch create waterproof ocaml-base-compiler.4.14.2 -y \
+    && opam install -y \
        coq-lsp.0.2.5+9.1 rocq-waterproof.3.1.1+9.1 \
     && opam exec -- coq-lsp --version \
     && opam list --installed > /opt/opam/installed-packages.txt \

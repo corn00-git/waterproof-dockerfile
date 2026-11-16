@@ -2,5 +2,12 @@
     "name": "Waterproof",
     "build": {
         "dockerfile": "Dockerfile"
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "waterproof-tue.waterproof"
+            ]
+        }
     }
 }
